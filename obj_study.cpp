@@ -13,14 +13,17 @@ public:
 
         static const GLchar* vertex_shader_source[] =
         {
-            "#version 450 core                                  \n"
-            "                                                   \n"
-            "void main(void)                                    \n"
-            "{                                                  \n"
-            // gl_Position : vertex 의 output
-            // 0.5 : clip space => 그 다음 opengl 단계에서 예상되는 coordinate system
-            "    gl_Position = vec4(0.0, 0.0, 0.5, 1.0);        \n"
-            "}                                                  \n"
+            "#version 420 core                                                 \n"
+            "                                                                  \n"
+            "void main(void)                                                   \n"
+            "{                                                                 \n"
+            "    const vec4 vertices[] = vec4[](vec4( 0.25, -0.25, 0.5, 1.0),  \n"
+            "                                   vec4(-0.25, -0.25, 0.5, 1.0),  \n"
+            "                                   vec4( 0.25,  0.25, 0.5, 1.0)); \n"
+            "                                                                  \n"
+            // gl_VertexID : 정점마다의 고유 id (오름차순)
+            "    gl_Position = vertices[gl_VertexID];                          \n"
+            "}                                                                 \n"
         };
 
         // Source code for fragment shader
@@ -110,7 +113,8 @@ public:
         glClearBufferfv(GL_COLOR, 0, color);
         */
 
-        const GLfloat color[] = { (float)sin(currentTime) * 0.5f + 0.5f,
+        /* >> Single Point 그리기
+        *  const GLfloat color[] = { (float)sin(currentTime) * 0.5f + 0.5f,
                               (float)cos(currentTime) * 0.5f + 0.5f,
                               0.0f, 1.0f };
 
@@ -129,6 +133,22 @@ public:
         // 3rd : 그리고자 하는 정점의 개수
         //      각 정점은 single vertex 로 인식된다.
         glDrawArrays(GL_POINTS, 0, 1);
+        */
+
+        /* >> 삼각형 그리기
+        */
+        const GLfloat color[] = { 0.0f, 0.2f, 0.0f, 1.0f };
+        glClearBufferfv(GL_COLOR, 0, color);
+
+        // 우리가 생성한 shader object 를 이용하여 rendering 해라
+        glUseProgram(rendering_program);
+
+        // 1st : 어떤 유형의 primitive 를 그릴 것인가
+        // GL_POINTS : point 를 그리고자 한다.
+        // 2nd : 일단 0 으로 세팅 (나중에 설명)
+        // 3rd : 그리고자 하는 정점의 개수
+        //      각 정점은 single vertex 로 인식된다.
+        glDrawArrays(GL_TRIANGLES, 0, 3);
     }
 private:
     // 넘겨받은 shader program object 를 저장한다.
