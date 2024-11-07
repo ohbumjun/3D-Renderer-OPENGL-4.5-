@@ -15,6 +15,8 @@ public:
         {
             "#version 420 core                                                 \n"
             "                                                                  \n"
+            "layout(location = 0) in vec4 offset;"
+            "                                                                  \n"
             "void main(void)                                                   \n"
             "{                                                                 \n"
             "    const vec4 vertices[] = vec4[](vec4( 0.25, -0.25, 0.5, 1.0),  \n"
@@ -22,7 +24,7 @@ public:
             "                                   vec4( 0.25,  0.25, 0.5, 1.0)); \n"
             "                                                                  \n"
             // gl_VertexID : 정점마다의 고유 id (오름차순)
-            "    gl_Position = vertices[gl_VertexID];                          \n"
+            "    gl_Position = vertices[gl_VertexID] + offset;                          \n"
             "}                                                                 \n"
         };
 
@@ -142,6 +144,13 @@ public:
 
         // 우리가 생성한 shader object 를 이용하여 rendering 해라
         glUseProgram(rendering_program);
+
+        GLfloat attrib[] = { (float)sin(currentTime) * 0.5f,
+                         (float)cos(currentTime) * 0.6f,
+                         0.0f, 0.0f };
+        // Update the value of input attribute 0
+        glVertexAttrib4fv(0, attrib);
+
 
         // 1st : 어떤 유형의 primitive 를 그릴 것인가
         // GL_POINTS : point 를 그리고자 한다.
