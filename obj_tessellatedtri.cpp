@@ -13,26 +13,25 @@ public:
 
         static const GLchar* vertex_shader_source[] =
         {
-            "#version 420 core                                                 \n"
-            "                                                                  \n"
-            "layout(location = 0) in vec4 offset;"
-            "layout (location = 1) in vec4 color;"
+           "#version 450 core\n"
+        "layout (vertices = 3) out;\n"
+        "\n"
+        "void main(void)\n"
+        "{\n"
+        "    // Only if I am invocation 0 ...\n"
+        "    if (gl_InvocationID == 0)\n"
+        "    {\n"
+        "        gl_TessLevelInner[0] = 5.0;\n"
+        "        gl_TessLevelOuter[0] = 5.0;\n"
+        "        gl_TessLevelOuter[1] = 5.0;\n"
+        "        gl_TessLevelOuter[2] = 5.0;\n"
 
-            "out VS_OUT\n"
-            "{\n"
-            "    vec4 color;\n"
-            "} vs_out;\n"
-            "                                                                  \n"
-            "void main(void)                                                   \n"
-            "{                                                                 \n"
-            "    const vec4 vertices[] = vec4[](vec4( 0.25, -0.25, 0.5, 1.0),  \n"
-            "                                   vec4(-0.25, -0.25, 0.5, 1.0),  \n"
-            "                                   vec4( 0.25,  0.25, 0.5, 1.0)); \n"
-            "                                                                  \n"
-            // gl_VertexID : 정점마다의 고유 id (오름차순)
-            "    gl_Position = vertices[gl_VertexID] + offset;                          \n"
-            "    vs_out.color = color                     \n"
-            "}                                                                 \n"
+        "    }\n"
+        "    // Everybody copies their input to their output\n"
+        "    gl_out[gl_InvocationID].gl_Position =\n"
+        "    gl_in[gl_InvocationID].gl_Position;\n"
+
+        "}\n"
         };
 
         // Source code for fragment shader
