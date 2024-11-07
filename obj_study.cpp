@@ -16,6 +16,12 @@ public:
             "#version 420 core                                                 \n"
             "                                                                  \n"
             "layout(location = 0) in vec4 offset;"
+            "layout (location = 1) in vec4 color;"
+
+            "out VS_OUT\n"
+            "{\n"
+            "    vec4 color;\n"
+            "} vs_out;\n"
             "                                                                  \n"
             "void main(void)                                                   \n"
             "{                                                                 \n"
@@ -25,6 +31,7 @@ public:
             "                                                                  \n"
             // gl_VertexID : 정점마다의 고유 id (오름차순)
             "    gl_Position = vertices[gl_VertexID] + offset;                          \n"
+            "    vs_out.color = color                     \n"
             "}                                                                 \n"
         };
 
@@ -33,11 +40,18 @@ public:
         {
             "#version 450 core                                  \n"
             "                                                   \n"
+            // Input from the vertex shader
+            // Declare VS_OUT as an input interface block
+            "in VS_OUT\n"
+            "{\n"
+            "    vec4 color;\n"     // Send color to the next stage
+            "} fs_in;\n"
+            "                                                   \n"
             "out vec4 color;                                    \n"
             "                                                   \n"
             "void main(void)                                    \n"
             "{                                                  \n"
-            "    color = vec4(0.0, 0.8, 1.0, 1.0);              \n"
+            " color = fs_in.color;                            \n"
             "}                                                  \n"
         };
 
@@ -140,6 +154,7 @@ public:
         /* >> 삼각형 그리기
         */
         const GLfloat color[] = { 0.0f, 0.2f, 0.0f, 1.0f };
+        const GLfloat colorLayout1[] = { 1.0f, 0.2f, 0.0f, 1.0f };
         glClearBufferfv(GL_COLOR, 0, color);
 
         // 우리가 생성한 shader object 를 이용하여 rendering 해라
@@ -150,6 +165,7 @@ public:
                          0.0f, 0.0f };
         // Update the value of input attribute 0
         glVertexAttrib4fv(0, attrib);
+        glVertexAttrib4fv(1, colorLayout1);
 
 
         // 1st : 어떤 유형의 primitive 를 그릴 것인가
