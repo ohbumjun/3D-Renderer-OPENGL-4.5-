@@ -572,5 +572,31 @@ ex) blending, logical operation
 #pragma endregion
 
 
+#pragma region Compute Shader
 
+/*
+계산 셰이더는 그래픽 파이프라인과 독립적인 과정이다.
 
+각 c.s 는 'work item' 이라고 불리는 single unit of work 에서 작동한다.
+
+해당 work item 들은 'local work group' 이라는 작은 group 으로 그룹화 된다.
+
+이러한 work group 들의 collection 이 opengl compute pipeline 에 보내진다.
+
+c.s 는 정해진 형태의 input, output 이런 것이 없다.
+
+대신에, c.s 는 각 work item 이 어떤 일을 할지를 정의한다.
+
+ex) 
+#version 450 core
+
+// local work group 의 크기가 32 * 32 work items.
+layout(local_size_x = 32, local_size_y = 32) in;
+
+void main(void)
+{
+    // Do nothing
+}
+*/
+
+#pragma endregion
