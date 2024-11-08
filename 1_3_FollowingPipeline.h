@@ -466,3 +466,111 @@ glViewport() and glDepthRange()
 */
 
 #pragma endregion
+
+#pragma region Culling
+
+/*
+유저 쪽으로 바라보는 front-face 삼각형만 그려내고
+back face 삼각형은 그리지 않는다.
+
+glEnable() with cap set to GL_CULL_FACE 을 통해
+Culling 을 진행할 수 있다.
+
+기본적으로는 back face culling 을 진행한다.
+
+glCullFace() 을 통해서 back face, front face culling 여부를
+설정할 수도 있다.
+*/
+#pragma endregion
+
+
+#pragma region Rasterization
+
+/*
+이 과정은 line, 삼각형 들의 primitive 들에 의해
+어떤 픽셀들이 맺히는지를 판단하는 과정이다.
+
+보통 삼각형 내부에 존재하는 픽셀은, 맺히는 픽셀이라고 판단하게 된다.
+
+각 과정은 parallel 하게 계산되어 성능을 높인다.
+*/
+
+#pragma endregion
+
+#pragma region Fragment Shader
+
+/*
+마지막 셰이더 단계이다.
+
+frame buffer 로 보내지기 전에
+각 픽셀의 색상을 겾렁한다.
+
+ex) 
+#version 450 core
+
+out vec4 color;
+
+void main(void)
+{
+    color = vec4(sin(gl_FragCoord.x * 0.25) * 0.5 + 0.5,
+        cos(gl_FragCoord.y * 0.25) * 0.5 + 0.5,
+        sin(gl_FragCoord.x * 0.15) * cos(gl_FragCoord.y * 0.15),
+        1.0);
+}
+
+gl_FragCoord 은  builtin 변수로
+화면 상에서 각 픽셀의 색상을 의미하게 된다.
+*/
+#pragma endregion
+
+#pragma region Framebuffer Operations
+
+/*
+Frame Buffer 는 opengl grahpic pipeline 의 마지막 단계이다.
+
+화면에 보여지는 pixel 정보를 담을 수 도 있고
+그외에 각 픽셀 별 값을 담는 메모리로도 활용될 수 있다.
+
+보통 대부분의 platform 에서 desktop 에서 보여지는
+window 는 해당 window system 에서 기본적으로 제공하는
+default frame buffer 이다.
+
+하지만 그외에 frame buffer 를 추가로 제작하는 것도 가능하다.
+*/
+#pragma endregion
+
+#pragma region Pixel Operations
+
+/*
+fragment shader 가 결과물을 생성한 이후
+window 에 쓰이기 전에 몇가지 연산이 발생한다.
+
+ex) scissor test 
+- 특정 영역에 대해서만 픽셀을 그리게 할 수 있다.
+
+ex) stencil test
+- 애플리케이션에서 제공하는 참조 값과 스텐실 버퍼의 내용을 비교
+텐실 버퍼는 픽셀당 단일 4비트 값을 저장합니다.
+스텐실 버퍼의 내용은 특별한 의미가 없으며 어떤 용도로든 사용될 수 있습니다.
+
+ex) depth test
+- stencil test 가 이루어진 이후 depth test 를 한다
+
+- 픽셀의 z 좌표와 depth buffer 에 저장된 값을 비교해서, 현재 그리고자 하는
+픽셀의 z 좌표가, depth buffer 에 저장된 값보다 가까우면 (z 기준 작으면 ?)
+depth buffer 의 내용을 update 하는 것이다.
+
+- depth buffer 는 stencil buffer 처럼 frame buffer 의 일부 메모리라고 생각하면 된다.
+각 픽셀 별로 single value 만을 저장할 수 있다.
+
+- 보통 depth buffer 안에 저장되는 값은 0 ~ 1 사이의 값이다.
+0 은 가장 가까운 것. 1은 가장 먼 것 
+
+ex) blending, logical operation
+- 
+*/
+#pragma endregion
+
+
+
+
