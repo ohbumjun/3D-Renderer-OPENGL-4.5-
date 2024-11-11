@@ -380,6 +380,11 @@ homogeneous coordinate 는 4개의 값으로 이루어진다.
 
 project geometry 에서 사용되는 좌표 시스템이다.
 
+보통, 동차좌표계 라고도 부른다.
+translation 도 matrix 곱셈으로 표현하기 위한 개념
+
+scaling, rotation 과 동일하게 취급하기 위해서 차원을 하나 추가한 개념이다.
+
 2) perspective divistion
 
 - 물론, pipeline 앞단의 결과물은 비록 4 개의 원소로 이루어진
