@@ -356,7 +356,7 @@ ex) line , triangle 들로 조합한다.
 즉, 보여지는 대상들이 어떤 pixel 에 맺히는지를
 결정한 다음
 
-이 pixel 들은 fragment shader 로 넘어가게 된다.
+이 pixel 들은 fragment shader 로 넘어가게 된다..
 */
 #pragma endregion
 
