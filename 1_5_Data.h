@@ -164,7 +164,9 @@ GL_MAP_COHERENT_BIT : 해당 메모리를 coherent 하게 사용하고 싶다
 - 이것을 만약 세팅하지 않았다면, 해당 buffer 을 "unmap " 하지
 않았는데도 불구하고 opengl 에게 data 를 썼다는 것을 알려줘야 한다.
 
+*/
 
+/*
 >> 예시
 // The type used for names in OpenGL is GLuint
 GLuint buffer;
@@ -182,7 +184,7 @@ glNamedBufferStorage(
 // Now bind it to the context using the GL_ARRAY_BUFFER binding point
 glBindBuffer(GL_ARRAY_BUFFER, buffer);
 
-여기에서 "GL_ARRAY_BUFFER" 의 경우, 
+여기에서 "GL_ARRAY_BUFFER" 의 경우,
 opengl 에게 해당 buffer 를 "vertex data" 를 담는데에 사용할 것이다 라고
 제시하는 것이다.
 
@@ -193,7 +195,54 @@ opengl 에게 해당 buffer 를 "vertex data" 를 담는데에 사용할 것이�
 
 
 
-#pragma region BUFFERS 4) buffer 에 데이터 복사해오기
+#pragma region BUFFERS 4) buffer 데이터 일부 변경하기
+
+/*
+*  >> buffer 에 data 를 가져오는 다른 방ㅂ버은
+* opengl 에게 buffer 를 준 다음, 해당 buffer 에 data 를 copy 하라고 하는 것이다.
+
+glBufferSubData() or glNamedBufferSubData() 함수들을 통해서
+buffer 에 넣고자 하는 data size , 
+우리가 접근하고자 하는 buffer 내 offset ,
+buffer 에 넣어져야할 메모리 내 data 에 대한 포인터
+를 인자로 전달하면 된다.
+
+>> void glBufferSubData(GLenum target,
+                     GLintptr offset,
+                     GLsizeiptr size,
+                     const GLvoid * data);
+void glNamedBufferSubData(GLuint buffer,
+                          GLintptr offset,
+                          GLsizeiptr size,
+                          const void * data);
+
+>> glBufferSubData
+
+- glBufferSubData() 을 이용해서 buffer object 를 update 하기 위새서는
+opengl 에게 , 해당 buffer object 에게 내가 데이터를 쓸 것이라고 얘기해줘야 한다.
+
+이를 위해서 glBufferStorage() or glNamedBufferStorage() 함수를 호출할 때
+GL_DYNAMIC_STORAGE_BIT 을 flag 에 포함시켜야 한다.
+
+즉, glBufferStorage 와 glNamedBufferStorage 함수는
+전체 buffer 를 할당 혹은 재할당한다
+
+반면 glBufferSubData 와 glNamedBufferSubData 함수는
+기존 buffer 내에서 특정 부분만을 "modify" 한다.
+전체 buffer 를 다시 할당할 필요 없이 일부분만을 변경한다는 것이다.
+
+위 인자 중에 glBufferSubData() 의 'target ' 변수와
+glNamedBufferSubData() 의 'buffer' 변수는
+binding point 를 의미한다
+ex) GL_ARRAY_BUFFER, GL_ELEMENT_ARRAY_BUFFER
+
+즉, 어떤 유형의 binding point 가 함수의 영향을 받을 것인지를 결정한다.
+*/
+
+#pragma endregion
+
+
+#pragma region BUFFERS 5) opengl 로부터 buffer data store 직접 얻어오기(mapping buffer)
 
 
 #pragma endregion
