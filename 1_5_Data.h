@@ -35,7 +35,6 @@ opengl command 를 통해 data store 에 data 를 넣을 수 있다.
 */
 #pragma endregion
 
-
 #pragma region BUFFERS 2) binding 
 
 /*
@@ -60,7 +59,6 @@ shader 들이 생산해내는 데이터들을 저장할 공간으로 사용할 �
 */
 
 #pragma endregion
-
 
 #pragma region BUFFERS 3) buffer 생성 및 memory 할당
 
@@ -193,8 +191,6 @@ opengl 에게 해당 buffer 를 "vertex data" 를 담는데에 사용할 것이�
 
 #pragma endregion
 
-
-
 #pragma region BUFFERS 4) buffer 데이터 일부 변경하기
 
 /*
@@ -241,8 +237,187 @@ ex) GL_ARRAY_BUFFER, GL_ELEMENT_ARRAY_BUFFER
 
 #pragma endregion
 
-
 #pragma region BUFFERS 5) opengl 로부터 buffer data store 직접 얻어오기(mapping buffer)
 
+/*
+* >> 
+(Map)
+void *glMapBuffer(GLenum target,        // 특정 binding point 지정
+                  GLenum usage);
+void *glMapNamedBuffer(GLuint buffer, // buffer object 의 이름 지정
+                       GLenum usage);
+
+(Unmap)
+void glUnmapBuffer(GLenum target);
+void glUnmapNamedBuffer(GLuint buffer);
+* >> 예시
+
+// This is the data that we will place into the buffer object
+static const float data[] =
+{
+     0.25, -0.25, 0.5, 1.0,
+    -0.25, -0.25, 0.5, 1.0,
+     0.25, 0.25, 0.5, 1.0
+};
+
+// Get a pointer to the buffer's data store
+void * ptr = glMapNamedBuffer(buffer, GL_WRITE_ONLY);
+
+// Copy our data into it...(vertex 정보를 채워준다)
+memcpy(ptr, data, sizeof(data));
+
+// Tell OpenGL that we're done with the pointer
+glUnmapNamedBuffer(GL_ARRAY_BUFFER);
+*/
+
+/*
+* >> glMapBuffer 함수가 glBufferSubData 함수보다 유용할 수 있는 이유
+
+buffer object 에 upload 하고 싶은 매우 큰 data 가 있다고 사정하다.
+해당 data 는 동적으로 만들어질 수도 있고, file 로 부터 read 될 수도 있다.
+
+1) glBufferSubData 을 이용하는 방법
+- data 를 임시로 저장할 memory 를 할당한다
+- data 를 생성 혹은 file 로부터 read 하여 임사 memory 에 채운다
+- glBufferSubData 함수를 통해 buffer object 에 "copy" 한다.
+
+2) glMapBuffer 함수를 이용하는 방법
+- buffer 를 map 한다. 즉, buffer 의 data store 에 대한 pointer 를 얻어온다.
+- data 를 바로 map 한 pointer 에 쓰거나, file 로부터 데이터를 읽어서
+ 바로 pointer 에 적용하낟..
+- buffer 를 unmap 한다.
+
+즉, 불필요한 copy 를 막을 수 있다.
+*/
+
+/*
+* >> glMapBufferRange, glMapNamedBufferRange 함수
+* 
+* glMapBuffer 와 glBufferSubData 은, 전체 buffer 를 mapping 하는 데에 유용하다.
+* 하지만 한편으로는 덜 효율적이기도 하다. 전체를 mapping 하기 때문에
+* 
+* 특정 부분에 대한 mapping 이 필요한 경우에는 
+* glMapBufferRange, glMapNamedBufferRange 함수를 사용하면 된다.
+* buffer 에 특정 부분만을 mapping 한다.
+* 
+* >> 
+void *glMapBufferRange(GLenum target,
+                       GLintptr offset,
+                       GLsizeiptr length,
+                       GLbitfield access);
+
+void *glMapNamedBufferRange(GLuint buffer,
+                            GLintptr offset,
+                            GLsizeiptr length,
+                            GLbitfield access);
+
+여기서 'GLbitfield' 은 어떤 식으로 mapping 할 것인지를 결정한다.
+
+GL_MAP_READ_BIT: buffer 로부터 읽고 싶다
+
+GL_MAP_WRITE_BIT:  buffer 에 쓰고 싶다
+
+GL_MAP_PERSISTENT_BIT, GL_MAP_COHERENT_BIT :
+    - glbufferStorage() 함수 인자와 비슷한 의미를 지닌다.
+
+>> glBufferStorage() 와 flag 호환
+- glBufferStorage() 함수를 통해 buffer object 를 만들 때
+GL_MAP_WRITE_BIT 을 flag 로 설정했다면,
+해당 buffer object 를 mapping 할 때에도
+GL_MAP_WRITE_BIT 을 flag 로 설정해야 한다.
+
+즉, 위 4개의 flag 종류들은, 항상 glBufferStorage() 와 호환되어야 한다.
+
+>> glMapBufferRange 가, glMapBuffer 보다 더 유용하다.
+*/
+
+#pragma endregion
+
+#pragma region BUFFERS 6) buffer object clear 하기
+/*
+* >> buffer 를 특정 constant value 로 채우기 위해서
+* glClearBufferData, glClearNamedBufferData 함수를 사용할 수 있다.
+
+void glClearBufferSubData(
+    GLenum target,   // type of buffer to clear ex) vertex buffer
+    GLenum internalformat,
+    GLintptr offset,    // 단위 : byte
+    GLsizeiptr size,    // 단위 : byte
+    GLenum format,  // ex) GL_RED, GL_RG, GL_RGB, or GL_RGBA
+                                  채널을 명시하는 부분dlek. 1,2,3,4 채널
+    GLenum type,     // data type ex) GL_FLOAT, GL_INT, GL_UNSIGNED_INT
+    const void * data // data 를 clear 시킬 value 를 담고 있는 memory 의 pointer
+);
+
+void glClearNamedBuffeSubData(GLuint buffer,
+                              GLenum internalformat,
+                              GLintptr offset,
+                              GLsizeiptr size,
+                              GLenum format,
+                              GLenum type,
+                              const void * data);
+
+ex) red 색상으로 buffer 를 채우고자 한다면
+
+glClearBufferSubData(GL_ARRAY_BUFFER, GL_RGBA, 0, bufferSize, GL_RGBA, GL_FLOAT, &redColor);
+
+ >> 
+*/
+#pragma endregion
+
+#pragma region BUFFERS 7) buffer ~ buffer 사이의 데이터 이동
+/*
+>> buffer ~ buffer 사이의 데이터 이동이 필요한경우
+
+1) share data
+- 두개의 buffer object 가 같은 data store 를 공유하도록 할 수 있다.
+
+2) copy data
+- 한 buffer object 의 data store 를 다른 buffer object 로 복사할 수 있다.
+
+3) data manipulation
+- 특정 buffer data 는 연산을 위해 활용하고
+ 그 결과를 다른 buffer 에 저장할 수 있다.
+*/
+
+/*
+* >> 아래 2개의 함수는 buffer ~ buffer 사이의 데이터 이동을 위해 사용된다.
+
+void glCopyBufferSubData(
+    GLenum readtarget, // source buffer object 의 binding point
+    GLenum writetarget,// destination buffer object 의 binding point 
+                                // 단, readtarget 에서 writetarget 으로 "copy" 는 안된다.
+                                // ex) 둘다 GL_ARRAY_BUFFER 로 설정하면 안된다.
+    GLintptr readoffset,
+    GLintptr writeoffset,
+    GLsizeiptr size
+);
+
+void glCopyNamedBufferSubData(
+    GLuint readBuffer,
+    GLuint writeBuffer,
+    GLintptr readOffset,
+    GLintptr writeOffset,
+    GLsizeiptr size
+);
+*/
+
+
+/* 
+>> GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER Targets:
+
+- buffer 사이에 data 를 copy 할 때, 의도하지 않은 side effect 를 막기 위해서
+추가된 binding point (target) 들이다.
+
+- 사용 예시) 
+// Bind the source buffer to GL_COPY_READ_BUFFER
+glBindBuffer(GL_COPY_READ_BUFFER, sourceBuffer);
+
+// Bind the destination buffer to GL_COPY_WRITE_BUFFER
+glBindBuffer(GL_COPY_WRITE_BUFFER, destinationBuffer);
+
+// Copy the data from the source buffer to the destination buffer
+glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, bufferSize);
+*/
 
 #pragma endregion
