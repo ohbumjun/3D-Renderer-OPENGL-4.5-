@@ -63,6 +63,40 @@ shader 들이 생산해내는 데이터들을 저장할 공간으로 사용할 �
 #pragma region BUFFERS 3) buffer 생성 및 memory 할당
 
 /*
+* https://rvalueref.tistory.com/6
+* 
+* >삼각형이 기본단위이다.
+* 삼각형을 'Primitive' 라고 부른다.
+* 
+* > 삼각형은 3개의 Vertex (꼭짓점) 으로 나타낼 수 있다.
+* 
+* > 각 꼭짓점은 "속성" 을 지닌다
+ex) 각 점의 위치 정보, 색상 정보 등
+      예를 들어 2차원 좌표에서 삼각형 2개를 표현하고 싶다. 각각 분홍색, 초록색
+
+  1) 위치 정보 속성
+  struct Vec2d {
+        float x;
+        float y;
+    };
+
+  2) 색상 정보 속성
+  struct Color {
+        float r;
+        float g;
+        float b;
+    };
+
+    // 꼭짓점 정보를 담을 수 있는 구조체
+    struct Vertex {
+        Vec2d position;
+        Color color;
+    };
+
+    즉, 하나의 꼭짓점은, 2개의 속성 "위치, 색상" 을 지닌다.
+*/
+
+/*
 opengl 에게 memory 를 할당하라고 얘기하기 전에
 먼저 buffer object 를 만들어야 한다.
 
@@ -82,6 +116,9 @@ buffers : 만들어진 buffer object 들의 이름을 저장할 GLuint 배열
 만약 1개의 buffer object 만을 만들고자 한다면 
 n 은 1 이 되고, buffers 는 1개의 GLuint 변수를 가리키는 포인터가 된다.
 
+*/
+
+/*
 >> void glBindBuffer(GLenum target, GLuint buffer);
 
 위에서 buffer object 를 얻어낸 이후
@@ -396,8 +433,8 @@ void glCopyBufferSubData(
 void glCopyNamedBufferSubData(
     GLuint readBuffer,
     GLuint writeBuffer,
-    GLintptr readOffset,
-    GLintptr writeOffset,
+    GLintptr readOffset,  // source buffer 에서 어떤 부분을 읽을 것인가
+    GLintptr writeOffset, // destination buffer 에서 어떤 부분에 쓸 것인가
     GLsizeiptr size
 );
 */
@@ -418,6 +455,98 @@ glBindBuffer(GL_COPY_WRITE_BUFFER, destinationBuffer);
 
 // Copy the data from the source buffer to the destination buffer
 glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, bufferSize);
+*/
+
+#pragma endregion
+
+
+#pragma region BUFFERS 8) Buffer 에서 Vertex Shader 로 데이터 전달하기
+
+// https://rvalueref.tistory.com/6
+
+/*
+* buffer object 들로부터 vertex shader 로 데이터를 동적으로 만들어서
+* 전달할 수 있다.
+* 
+* ex) 
+* - 셰이더를 재 컴파일 하지 않고도, vertex data 를 수정할 수 있다.
+* - gpu memory 측에 큰 데이터를 저장할 수도 있고, 거기에 접근할 수도 있다.
+*/
+
+/*
+* >> VAO 의 역할 (Vertex Array Object)
+* - 정점 attribute 의 'state' 을 저장하는 container 다.
+* 즉, 정점 attribute 정보를 저장하는 공간이라고 생각하면 된다.
+* 
+* 그래서 어떻게 buffer object 들로부터 vertex data 를 해석하고
+* 가져올 것인지에 대한 정보를 담고 있다.
+* 
+* VAO 를 OpenGL context 에 bind 시키면,
+* rendering 을 위해서 어떻게 정점 데이터를 처리할지를
+* 알려주는 것이다.
+* 
+* 1) VAO 생성
+* glCreateVertexArrays(1, &vao)
+- Allocates memory for a VAO and assigns its handle to the vao variable
+*
+* 2) VAO Bind 시키기
+* glBindVertexArray(vao) 
+* -- 자. 여기서부터 이제 VAO state 정보를 채워줄 수 잇다.
+
+* vertex shader 의 데이터를 하드 코딩하기보다는 
+* vertex attribute 을, 
+* OpenGL 에게, 우리가 제공하는 buffer object 에 저장된
+* 정보로, 채워달라고 요청할 수 있다.
+
+*/
+
+/* >> glVertexArrayAttribBinding
+
+void glVertexArrayAttribBinding(
+        GLuint vaobj,           // VAO 에 대한 handle
+
+        GLuint attribindex,   // shader 에서 vertex attribute 의 index
+                                      // 해당 index 는 vertex shader 에서
+                                       선언한다.
+
+        GLuint bindingindex // binding 하고 있는 vertex buffer 의 index
+                                     // 해당 index 는 glBindBuffer() 함수를 통해
+                                     // binding 한 buffer object 에 대응된다.
+);
+
+해당 함수를 통해 shader 상에서 사용하는 vertex attribute 을
+특정 buffer object 와 연결한다.
+
+opengl 에게, 'vaobj' 라는 이름의 VAO 가 bind 될 때
+attribute index 'attribindex' 를 가진 vertex attribute 가
+data 를 'bindingindex' 를 가진 buffer object 로부터 
+가져오게 하는 것이다.
+
+즉, 해당 VAO 를 활용하여 draw 를 하게 되면
+
+1) VAO Bind
+- 특정 VAO 를 activate 한다.
+2) Fetch Vertex Data
+- 각 vertex 마다, vertex atrribute 의 binding index 를 확인한다.
+3) Access the Buffer
+- 'bindingindex' 를 가진 buffer object 에서 data 를 가져온다.
+4) Send Data to the Shader
+- vertex shader 의 input 으로 넘겨준다.
+*/
+
+/*
+* >> void glVertexArrayVertexBuffer(
+        GLuint vaobj,               // vertex array object handle (vao)
+        GLuint bindingindex,    // vertex buffer binding index 
+                                        // glVertexArrayAttribBinding() 에서 사용한 index 와 일치해야 한다.
+                                    // 몇버째 VBO 바인딩 슬롯에 바인딩 할 것인지
+        GLuint buffer,    // vertex data 정보를 담은 buffer object
+        GLintptr offset,  // buffer object 내에서의 byte offset (첫번째 정점 데이터 시작 위치)
+        GLsizei stride     // 각 정점 데이터 사이의 byte offset
+);
+
+해당 함수는, vertex attribtue data 의 format 을 지정한다.
+즉, data 가 어떻게 해석되어야 하는지를 알려준다.
 */
 
 #pragma endregion

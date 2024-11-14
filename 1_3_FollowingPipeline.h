@@ -15,7 +15,6 @@ vertex attribute 를 정의하려면 vertex shader 에서 'in' 을 사용한다.
 // 'offset' is an input vertex attribute
 #version 450 core
 
-// 'offset' is an input vertex attribute
 layout(location = 0) in vec4 offset;
 
 void main(void)
