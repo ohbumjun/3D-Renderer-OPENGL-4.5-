@@ -33,6 +33,7 @@ opengl command 를 통해 data store 에 data 를 넣을 수 있다.
 혹은 buffer 에 대한 포인터를 cpu 측에서 얻어와서
 해당 buffer 에 직접 데이터를 쓸 수도 있다.
 */
+
 #pragma endregion
 
 #pragma region BUFFERS 2) binding 
@@ -94,6 +95,128 @@ ex) 각 점의 위치 정보, 색상 정보 등
     };
 
     즉, 하나의 꼭짓점은, 2개의 속성 "위치, 색상" 을 지닌다.
+
+* >> VBO (Vertex Buffer Object)
+* 
+// 삼각형 데이터
+const Color pink_color = {1.0f, 0.765f, 0.765f};
+const Color green_color = {0.545f, 1.0f, 0.345f};
+
+const Vertex vertices[6] = {
+    // 핑크색 삼각형
+    Vertex{Vec2d{2.0f, 8.0f}, pink_color},
+    Vertex{Vec2d{1.0f, 5.0f}, pink_color},
+    Vertex{Vec2d{5.0f, 6.0f}, pink_color},
+
+    // 연두색 삼각형
+    Vertex{Vec2d{4.0f, 4.0f}, green_color},
+    Vertex{Vec2d{6.0f, 1.0f}, green_color},
+    Vertex{Vec2d{8.0f, 3.0f}, green_color},
+};
+
+위와 같이, 삼각형 각 꼭짓점들을 "배열" 에 넣었다고 해보자.
+이와 같이 "꼭짓점 정보들을 담고 있는 배열 객체" 를 VBO 라고 한다.
+
+그런데  VBO 에 담겨 있는 정보는, 형식이 정해져있지 않다.
+따라서 OpenGL 에서는 VBO 만 가지고는, 해당 정보를 
+삼각형들로 어떻게 해석할지 모른다.
+
+따라서, VBO 를, 어떤 형태의 삼각형으로 해석해야 하는가에 대한
+"메타 정보" 를 가지고 있는 "객체" 를 VAO 라고 한다.
+
+>> glCreateBuffers
+위의 삼각형 정보들을 활용하여 VBO 를 만들 수 있다.
+// VBO 생성
+GLuint my_vbo;
+glCreateBuffers(1, &my_vbo);
+
+이렇게 호출된 이후, 'my_vbo' 에는 새로 생성된 VBO 번호가 저장되어 있다.
+
+>> glCreateVertexArrays
+- VBO 은 꼭짓점 데이터를 그저 바이트 배열 형태로만 볼 뿐
+내부 구조는 모른다.
+
+VBO 데이터를 OpengL 에서 해석하고 사용하기 위해서는
+VAO 를 사용해야 한다.
+
+VAO 구조는 기본적으로
+1) 속성 : 꼭짓점의 속성 ex) 0 : 위치, 1 : 색상
+2) VBO 바인딩 
+이라는 2가지의 슬롯이 존재한다.
+
+VBO 바인딩 슬롯에는 VBO를 연결할 수 있다.
+
+각 속성에는 최대 1개의 VBO 을 바인딩 할 수 있다.
+
+그리고 VBO 바인딩에 연결된 VBO 을 어떻게
+해석해야 하는지에 대한 형식(format) 을 설정할 수 있다.
+
+
+>> glVertexArrayVertexBuffer(
+    GLuint vaobj,           // vao 번호
+    GLuint bindingindex, // 몇번째 vbo 바인딩 슬롯에 바인딩 할 것인가.
+    GLuint buffer,           // 바인딩할 vbo 번호
+    GLintptr offset,         // vbo 의 몇번째 바이트부터 사용 ?
+    GLsizei stride)          // 꼭짓점 사이의 간격
+- VBO 을 VAO 에 있는 VBO 바인딩 슬롯에 연결하는 함수 이다.
+
+>> glEnableVertexArrayAttrib() 함수
+- 이제 VAO 에 바인딩한 VBO 을, "속성" 과 연결시키고자 한다.
+연결하기 이전에 '속성' 을 "활성화 enable" 해야 한다.
+
+2번째 인자에는 몇번째 속성을 활성화할 것인지를 넘겨준다.
+
+// 0번 attribute로 position을 설정할 것임
+const int POSITION_ATTRIBUTE_INDEX = 0;
+
+// my_vao의 0번 attribute 활성화
+glEnableVertexArrayAttrib(my_vao, POSITION_ATTRIBUTE_INDEX);
+
+>> glVertexArrayAttribBinding
+- 속성과 VBO 바인딩을 연결해주는 함수이다.
+
+// my_vao의 0번 attribute로 my_vbo의 데이터를 바인딩
+glVertexArrayAttribBinding(
+    my_vao, 
+    POSITION_ATTRIBUTE_INDEX,   // 속성의 번호
+    MY_VBO_BINDING                  // VBO 바인딩 번호
+);
+
+>>  // my_vao의 0번 attribute에 바인딩된 vbo (my_vbo)를 어떻게 해석할지(format)를 설정
+glVertexArrayAttribFormat(
+        my_vao,                      // VAO 번호
+        POSITION_ATTRIBUTE_INDEX,    // VAO attribute 번호
+        2,                           // 벡터의 원소 개수
+        GL_FLOAT,                    // 원소의 타입
+        GL_FALSE,                    // normalized
+        offsetof(Vertex, position)); // Vertex 내의 position 멤버의 위치
+
+여기까지 해서 끝이 아니다. 
+지금까지 한 것은, 0 번 속성에서 my_vbo 을 사용하라는 명령을
+내린 것이다.
+
+VAO 에서는 아직 my_vbo 의 "형식 format" 을 모른다.
+위 함수를 통해 "형식" 을 지정해주어야 한다.
+
+
+>> 예시 : 1번 속성에 color를 설정
+
+// 1번 attribute로 color를 설정할 것임
+const int COLOR_ATTRIBUTE_INDEX = 1;
+
+// my_vao의 1번 attribute 활성화
+glEnableVertexArrayAttrib(my_vao, COLOR_ATTRIBUTE_INDEX);
+
+// my_vao의 1번 attribute로 my_vbo의 데이터를 바인딩
+glVertexArrayAttribBinding(my_vao, COLOR_ATTRIBUTE_INDEX, MY_VBO_BINDING);
+
+// my_vao의 1번 attribute에 바인딩된 vbo (my_vbo)를 어떻게 해석할지(format)를 설정
+glVertexArrayAttribFormat(my_vao,                     // VAO 번호
+                            COLOR_ATTRIBUTE_INDEX,    // VAO attribute 번호
+                            3,                        // 벡터의 원소 개수
+                            GL_FLOAT,                 // 원소의 타입
+                            GL_FALSE,                 // normalized
+                            offsetof(Vertex, color)); // Vertex 내의 color 데이터의 위치
 */
 
 /*
@@ -459,7 +582,6 @@ glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, bufferSize)
 
 #pragma endregion
 
-
 #pragma region BUFFERS 8) Buffer 에서 Vertex Shader 로 데이터 전달하기
 
 // https://rvalueref.tistory.com/6
@@ -514,22 +636,19 @@ void glVertexArrayAttribBinding(
                                      // binding 한 buffer object 에 대응된다.
 );
 
-해당 함수를 통해 shader 상에서 사용하는 vertex attribute 을
-특정 buffer object 와 연결한다.
-
-opengl 에게, 'vaobj' 라는 이름의 VAO 가 bind 될 때
-attribute index 'attribindex' 를 가진 vertex attribute 가
-data 를 'bindingindex' 를 가진 buffer object 로부터 
-가져오게 하는 것이다.
+shader 상의 vertex 속성 ~ vbo (buffer) 을 연결해주는 것
 
 즉, 해당 VAO 를 활용하여 draw 를 하게 되면
 
 1) VAO Bind
 - 특정 VAO 를 activate 한다.
+
 2) Fetch Vertex Data
 - 각 vertex 마다, vertex atrribute 의 binding index 를 확인한다.
+
 3) Access the Buffer
 - 'bindingindex' 를 가진 buffer object 에서 data 를 가져온다.
+
 4) Send Data to the Shader
 - vertex shader 의 input 으로 넘겨준다.
 */
@@ -545,8 +664,193 @@ data 를 'bindingindex' 를 가진 buffer object 로부터
         GLsizei stride     // 각 정점 데이터 사이의 byte offset
 );
 
-해당 함수는, vertex attribtue data 의 format 을 지정한다.
-즉, data 가 어떻게 해석되어야 하는지를 알려준다.
+VAO 에 있는 VBO 바인딩 슬롯에, VBO 을 연결해주는 함수
+
+대략적인 VBO 구조를 알려준다.
+
+하지만, 더 구체적인 vbo 의 내용은 glVertexArrayAttribFormat 함수를
+통해 알려주어야 한다.
+
+*/
+
+/*
+* void glVertexArrayAttribFormat(GLuint vaobj,
+    GLuint attribindex,  // 속성 idx
+    GLint size,              // 각 정점 데이터의 원소 개수
+    GLenum type,         // 데이터 타입
+
+    // shader 로 넘겨줄 값을 정규화 시킬 것인가에 대한 변수이다.
+    // GL_FLOAT 에 대해서는 적용되지 않는다.
+    // GL_UNSIGNED_BYTE  혹은 GL_INT 에 대해서만 적용된다.
+    // 예를 들어, GL_UNSIGNED_BYTE  를 사용하고, normalized 를 true 로 설정하면
+    // 0 ~ 255 사이의 값을 0.0 ~ 1.0 사이 "FLOAT" 으로 변환한다.
+    // 즉, vertex shader input 으로 들어가기 전에 0 ~ 1 사이로 변환 되므로
+    // vetex shader 측에서는 0.0 ~ 1.0 사이의 float 값으로 input 을 받게 되는 것
+    // 반면 해당 인자를 false 로 세팅하면
+    // vertex shader 는0 ~ 255 사이의 float 값으로 바라보게 될 것이다.
+    GLboolean normalized,
+    GLuint relativeoffset);
+*/
+
+/*
+>> void glEnableVertexAttribArray(GLuint index);
+- 속성을 활성화 해주는 함수이다.
+
+// First, bind a vertex buffer to the VAO
+glVertexArrayVertexBuffer(vao,                  // Vertex array object
+                          0,                    // First vertex buffer binding
+                          buffer,               // Buffer object
+                          0,                    // Start from the beginning
+                          sizeof(vmath::vec4)); // Each vertex is one vec4
+
+// Now, describe the data to OpenGL, tell it where it is, and turn on automatic
+// vertex fetching for the specified attribute
+glVertexArrayAttribFormat(vao,                  // Vertex array object
+                          0,                    // First attribute
+                          4,                    // Four components
+                          GL_FLOAT,             // Floating-point data
+                          GL_FALSE,             // Normalized - ignored for floats
+                          0);                   // First element of the vertex
+
+glEnableVertexArrayAttrib(vao, 0);
+
+이제 opengl 은, vetex shader 에서의 0번째 속성을
+VAO 에 binding 된 buffer 메모리로부터 읽어와서 해석할 것이다.
+
+ex) 
+
+#version 450 core
+
+layout (location = 0) in vec4 position;
+
+void main(void)
+{
+    gl_Position = position;
+}
+*/
+
+/*
+* >> void glDisableAttribArray(GLuint index);
+
+- vetex attribute (속성) 값을 buffer object 의 데이터로 채우는 것을 마쳤다면
+해당 속성을 disable 할 때 사용하는 함수 이다.
 */
 
 #pragma endregion
+
+
+#pragma region BUFFERS 9) vetex shader 에 여러 input 전달하기 
+
+/*
+* >> GLint glGetAttribLocation(GLuint program,
+                          const GLchar * name);
+ 
+넘겨준 속성이 몇번째 index 인지를 반환하는 함수이다.
+
+layout (location = 0) in vec3 position;
+layout (location = 1) in vec3 color;
+ 
+ 예를 들어, "position" 을 2번째 인자로 넘겨주면 
+ '0' 을 리턴할 것이다.
+
+ 만약 내가 속성별 index 를 specify 했다면
+ 내가 specify 한 index 를 리턴할 것이다.
+
+ 만약 index 를 specify 하지 않으면
+ opengl 이 자동으로 index 를 할당할 것이다.
+*/
+
+/*
+* >> vertex shader input 과 어플리케이션의 data 를 연결하는 방법
+
+1) seperate attribute
+- 서로 다른 속성 (ex. 위치, 색상) 은 서로 다른 buffer object 에 저장된다.
+각 attribute 은 각자의 buffer 를 가지고 있다.
+
+2) interleaved attribute
+- 하나의 정점을 위한 모든 속성들이 single buffer object 에 저장된다.
+
+
+>> separate vertex attributes 예시
+- glCreateBuffers() 함수를 통해 2개의 서로 다른 buffer object 를 만들고 있다.
+- 그리고 각 속성에 대해 glVertexArrayAttribBinding() 을 호출
+
+GLuint buffer[2];
+GLuint vao;
+
+static const GLfloat positions[] = { ... };
+static const GLfloat colors[] = { ... };
+
+// Create the vertex array object
+glCreateVertexArrays(1, &vao)
+
+// Get create two buffers (2개 버퍼 동시 생성)
+glCreateBuffers(2, &buffer[0]);
+
+// Initialize the first buffer
+// - allocate memory
+// - copy data 
+glNamedBufferStorage(buffer[0], sizeof(positions), positions, 0);
+
+// Bind it to the vertex array - offset zero, stride = sizeof(vec3)
+// vao 에 있는 vbo 바인딩 슬롯에 vbo 바인딩
+glVertexArrayVertexBuffer(vao, 0, buffer[0], 0, sizeof(vmath::vec3));
+
+// Tell OpenGL what the format of the attribute is
+glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
+
+// Tell OpenGL which vertex buffer binding to use for this attribute
+// 속성과 vbo 연결
+glVertexArrayAttribBinding(vao, 0, 0);
+
+// Enable the attribute
+glEnableVertexArrayAttrib(vao, 0);
+
+// Perform similar initialization for the second buffer
+glNamedBufferStorage(buffer[1], sizeof(colors), colors, 0);
+glVertexArrayVertexBuffer(vao, 1, buffer[1], 0, sizeof(vmath::vec3));
+glVertexArrayAttribFormat(vao, 1, 3, GL_FLOAT, GL_FALSE, 0);
+glVertexArrayAttribBinding(vao, 1, 1);
+glEnableVertexAttribArray(1);
+
+>> interleaved vertex attributes 예시
+- glCreateBuffers() 을 한번만 호출해서 하나의 buffer object 만을 만든다
+- glVertexArrayAttribFormat 만 2번 호출해서, vertices 내에 서로 다른 
+  속성의 offset 을 연결만 시켜준다. (맨 처음 https://rvalueref.tistory.com/6 예시)
+
+GLuint vao;
+GLuint buffer;
+
+static const vertex vertices[] = { ... };
+
+// Create the vertex array object
+glCreateVertexArrays(1, &vao);
+
+// Allocate and initialize a buffer object
+glCreateBuffers(1, &buffer);
+glNamedBufferStorage(buffer, sizeof(vertices), vertices, 0);
+
+// Set up two vertex attributes - first positions
+// 속성과 vbo 바인딩 연결
+glVertexArrayAttribBinding(vao, 0, 0);
+glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(vertex, x));
+glEnableVertexArrayAttrib(0);
+
+// Now colors
+glVertexArrayAttribBinding(vao, 1, 0);
+glVertexArrayAttribFormat(vao, 1, 3, GL_FLOAT, GL_FALSE, offsetof(vertex, r));
+glEnableVertexArrayAttrib(1);
+
+// Finally, bind our one and only buffer to the vertex array object
+glVertexArrayVertexBuffer(vao, 0, buffer);
+*/
+
+/*
+* >> glVertexArrayAttribBinding 활용 방법
+- 만약 매우 많은 geometry 정보들이
+서로 다른 buffer 에 저장되어 있고, 비슷한 format 을 가지고 있을 때
+
+그것들을 그릴 때, 그저, glVertexArrayAttribBinding() 함수를 통해
+속성에 연결된 buffer 만 switch 해주고 draw 해도 된다.
+*/
+#pragma region
