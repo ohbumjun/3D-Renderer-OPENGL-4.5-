@@ -854,7 +854,6 @@ glVertexArrayVertexBuffer(vao, 0, buffer);
 */
 #pragma endregion
 
-
 #pragma region UNIFORM
 /*
 * >> Uniform 기본 용도
@@ -889,7 +888,6 @@ uniform int answer = 42;
 
 #pragma endregion
 
-
 #pragma region UNIFORM 2) Arranging Your Uniforms
 
 /*
@@ -918,7 +916,6 @@ shader 중에 해당 uniform 을 사용하는 shader 가 단 하나라도 없다
  */
 
 #pragma endregion
-
 
 #pragma region UNIFORM 3) Uniform 세팅하기
 
@@ -976,7 +973,6 @@ GL_FALSE : transpose 여부
   row major, column major 에 대한 설명
 */
 #pragma endregion
-
 
 #pragma region UNIFORM 4) Uniform Blocks
 
@@ -1054,7 +1050,238 @@ application 이 각 데이터가 어디에 있는지를 알아야 한다는 의�
 
 반대로 말하면 OpenGL 은 빠르고 효율적으로 데이터를 처리할지 몰라도
 application 이 할일은 더 많다는 것이다.
+*/
 
+/*
+* >> Standard 예시
+
+std140 : UBO 내 data 들을 standard 방식으로 구성하는 방식
+그냥 쉽게 말해서 우리 c++ 에서 struct 크기 align 맞추는 것이다.
+
+멤버 중에서 가장 큰 값에 맞춰서 나머지 값들도 padding 줘서 맞추는 등의
+정렬 방식을 선택한다는 것이다.
+
+ex 1)
+
+layout (std140) uniform ExampleBlock
+{
+                            // base alignment  // aligned offset
+    float value;        // 4                // 0
+    vec3 vector;        // 16              // 16  (16의 배수여야하므로 4->16)
+    mat4 matrix;     // 16                  // 32  (0 열)
+                            // 16               // 48  (1 열)
+                            // 16               // 64  (2 열)
+                             // 16              // 80  (3 열)
+    float values[3]; // 16                  // 96  (values[0])
+                            // 16              // 112 (values[1])
+                            // 16              // 128 (values[2])
+    bool boolean;    // 4                   // 144
+    int integer;        // 4                // 148
+};
+
+ex 2) 
+
+layout(std140) uniform TransformBlock
+{
+// Member                      base alignment offset  aligned offset
+   float scale;                 // 4                    0       0
+   vec3 translation;        // 16                   4       16
+   float rotation[3];       // 16                   28      32 (rotation[0])
+                                    //                              48 (rotation[1])
+                                    //                              64 (rotation[2])
+   mat4 projection_matrix;  // 16             80      80 (column 0)
+                                    //                              96 (column 1)
+                                    //                              112 (column 2)
+                                    //                              128 (column 3)
+} transform;
+
+자. 이렇게 중간 중간 padding 도 들어가고 하게 된다.
+이때 주의할 점은, 해당 buffer object memory 를 채우기 위해서
+그냥 C Array 을 이용하여 memcpy 하면 안된다.
+C Array 은 위와 같은 padding 없이  데이터를 채우려고 하고
+이는 부정확한 데이터를 채우게 될 수 있다.
+*/
+
+/*
+>> Offst 직접 명시하는 방법
+
+ex 1) 
+layout(std140) uniform ManuallyLaidOutBlock
+{
+    layout (offset = 32) vec4       foo;    // At offset 32 bytes
+    layout (offset = 8) vec2        bar;    // At offset 8 bytes
+    layout (offset = 48) vec3       baz;    // At offset 48 bytes
+}  myBlock;
+
+이와 같은 방식으로 직접 offset 을 명시할 수도 있다.
+*/
+
+/*
+>> Offst 직접 명시 + align 키워드 사용하는 방법
+
+align 키워드를 사용하면 데이터 타입의 정렬을 강제할 수 있다.
+
+ex 1)
+layout (std140, align = 16) uniform ManuallyLaidOutBlock
+{
+    layout (offset = 32) vec4       foo;    // At offset 32 bytes
+    layout (offset = 8) vec2        bar;    // At offset 16 bytes
+    layout (offset = 48) vec3       baz;    // At offset 48 bytes
+}  myBlock;
+
+align = 16: 전체 블록을 16바이트 경계에 맞춰 정렬합니다.
+
+foo: vec4 타입이므로 16바이트 경계에 맞춰져 있으므로 offset = 32가 유효합니다.
+
+bar: vec2 타입은 일반적으로 8바이트 경계에 맞춰지지만, 
+    블록 전체가 16바이트 경계에 맞춰져 있으므로 
+       offset = 8은 16바이트 경계로 올림되어 실제 오프셋은 16이 됩니다.
+
+baz: vec3 타입은 16바이트 경계에 맞춰져야 하므로 offset = 48이 유효
+*/
+
+/*
+>> void glGetUniformIndices(
+    GLuint program,
+    GLsizei uniformCount, // number of uniform
+    const GLchar ** uniformNames,
+    GLuint * uniformIndices // 해당 값으로 특정 uniform 의 indice 를 얻어올 수 있다.
+);
+
+위 함수는, UBO 내 멤버의 index 를 얻어오는 함수이다.
+한번에 여러개 멤버에 대한 index 들을 얻어올 수 있는 구조이다.
+
+예를 들어, UBO 멤버 2개에 대한 index 를 얻어오고 싶다면
+uniformCount 는 2, uniformNames 는 
+2개의 uniform 이름을 가진 배열을 넘겨주면 된다.
+
+ex) 
+static const GLchar * uniformNames[4] =
+{
+    "TransformBlock.scale",
+    "TransformBlock.translation",
+    "TransformBlock.rotation",
+    "TransformBlock.projection_matrix"
+};
+GLuint uniformIndices[4];
+
+glGetUniformIndices(program, 4, uniformNames, uniformIndices);
+*/
+
+/*
+* >> void glGetActiveUniformsiv(GLuint program,
+       GLsizei uniformCount,
+       const GLuint * uniformIndices,
+       GLenum pname,
+       GLint * params);
+
+UBO 멤버들의 index 를 얻어왔기 때문에 이제
+각 멤버들의 buffer 내 location 을 얻어올 수 있다.
+
+ex)
+GLint uniformOffsets[4]; // Transform Block 의 4개 멤버에 대한 offset
+GLint arrayStrides[4];      // Transform Block 의 4개 멤버에 대한 array stride
+GLint matrixStrides[4];   // Transform Block 의 4개 멤버에 대한 matrix stride
+glGetActiveUniformsiv(program, 4, uniformIndices,
+                      GL_UNIFORM_OFFSET, uniformOffsets);
+glGetActiveUniformsiv(program, 4, uniformIndices,
+                      GL_UNIFORM_ARRAY_STRIDE, arrayStrides);
+glGetActiveUniformsiv(program, 4, uniformIndices,
+                      GL_UNIFORM_MATRIX_STRIDE, matrixStrides);
+
+예를 드렁, offset 을 얻어오고 나면
+glBufferSubData() 함수를 통해 해당 buffer 내 특정 offset 에 있는
+값을 opengl 로부터 load 해서 올 수도 있다.
+
+혹은 glMapBufferRange() 함수로 전체 buffer 에 대한 포인터를 얻어온 이후
+해당 offset 에 직접 데이터를 쓸 수도 있을 것이다.
+
+ex 1) TransformBlock.scale 에 3.0f 를 넣고 싶다면
+// Allocate some memory for our buffer (don't forget to free it later)
+unsigned char * buffer = (unsigned char *)malloc(4096);
+
+// We know that TransformBlock.scale is at uniformOffsets[0] bytes
+// into the block, so we can offset our buffer pointer by that and
+// store the scale there.
+*((float *)(buffer + uniformOffsets[0])) = 3.0f;
+* 
+ex 2)  TransformBlock.translation 에 1.0f, 2.0f, 3.0f 를 넣고 싶다면
+// Put three consecutive GLfloat values in memory to update a vec3
+((float *)(buffer + uniformOffsets[1]))[0] = 1.0f;
+((float *)(buffer + uniformOffsets[1]))[1] = 2.0f;
+((float *)(buffer + uniformOffsets[1]))[2] = 3.0f;
+
+ex 3) TransformBlock.rotation 에 값 세팅하기
+ 
+ // TransformBlock.rotations[0] is at uniformOffsets[2] bytes into
+// the buffer. Each element of the array is at a multiple of
+// arrayStrides[2] bytes past that.
+const GLfloat rotations[] = {  30.0f, 40.0f, 60.0f };
+
+// offset : 'rotation' member 의 starting offset 이 여기에 들어가 있다.
+unsigned int offset = uniformOffsets[2];
+
+for (int n = 0; n < 3; n++)
+{
+    *((float *)(buffer + offset)) = rotations[n];
+
+// arrayStrides[2] 란, 지금 rotation array 내부에 element 사이에 존재하는
+// stride 를 의미한다.
+// 즉, float[3] 에서 각 float 들이 , 연속으로 붙어있지 않을 수 있다는 것이다.
+    offset += arrayStrides[2];
+}
+
+ex 4) TransformBlock.projection_matrix 값 세팅하기
+
+// The first column of TransformBlock.projection_matrix is at
+// uniformOffsets[3] bytes into the buffer. 
+
+// The columns are
+// spaced matrixStride[3] bytes apart and are essentially vec4s.
+// This is the source matrix - remember, it's column major.
+const GLfloat matrix[] =
+{
+    1.0f, 2.0f, 3.0f, 4.0f,
+    9.0f, 8.0f, 7.0f, 6.0f,
+    2.0f, 4.0f, 6.0f, 8.0f,
+    1.0f, 3.0f, 5.0f, 7.0f
+};
+
+for (int i = 0; i < 4; i++)
+{
+// uniformOffsets[3] 에 project_matrix 의 시작 offset 이 저장되어 있다.
+// matrixStride[3] : matrix 가 4개의 vec4 로 구성되어 있는 상황에서
+//                          matrix 내 각 vec4 사이의 간격이 얼마나 되는지를 나타낸다.
+    GLuint offset = uniformOffsets[3] + matrixStride[3] * i;
+    for (j = 0; j < 4; j++)
+    {
+        *((float *)(buffer + offset)) = matrix[i * 4 + j];
+        offset += sizeof(GLfloat);
+    }
+}
+*/
+
+/*
+* 결론
+* - 자. 위와 같이 shared layout 을 사용하면, 코드도 길고 복잡하다
+* 따라서 되도록 standar layout 을 사용하는 것을 추천한다.
+*/
+
+/*
+* >> GLuint glGetUniformBlockIndex(
+        GLuint program,
+        const GLchar * uniformBlockName // "TransformBlock"
+);
+
+자. 지금까지는 UBO 내의 각 멤버 및 원소에 대한 얘기를 했었다.
+이제는 UBO 전체에 data 를 쓰고자 하는 상황이라고 해보자.
+
+즉, 특정 ubo 를 찾아와서 거기에 data 를 한꺼번에 쓰고 싶은 상황이다.
+그러면 shader program 에 많이 존재하는 uniform block 중에서
+원하는 uniform block 을 찾아와야 한다.
+
+각 UBO 들은, 고유한 index 를 지닌다.
+이 index 를 얻어오기 위해서 위 함수를 사용한다.
 
 */
 #pragma endregion
