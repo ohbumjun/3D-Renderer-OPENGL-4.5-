@@ -738,7 +738,6 @@ void main(void)
 
 #pragma endregion
 
-
 #pragma region BUFFERS 9) vetex shader 에 여러 input 전달하기 
 
 /*
@@ -853,4 +852,209 @@ glVertexArrayVertexBuffer(vao, 0, buffer);
 그것들을 그릴 때, 그저, glVertexArrayAttribBinding() 함수를 통해
 속성에 연결된 buffer 만 switch 해주고 draw 해도 된다.
 */
-#pragma region
+#pragma endregion
+
+
+#pragma region UNIFORM
+/*
+* >> Uniform 기본 용도
+- vertex shader 뿐만 아니라 모든 shader 단계 쪽에
+data 를 직접 보내줄 때 사용할 수 있다.
+
+2 개 형태의 uniform 이 있다.
+1) default block
+2) uniform block
+*/
+#pragma endregion
+
+#pragma region UNIFORM 1) Default Block Uniforms
+
+/*
+Vertex attribute 는 각 정점 별로 다른 값을 pass 하는데에 사용했다면
+uniform 은 모둔 vertex 에 동일하게 적용되는 값을 넘겨주는데 사용할 수 있다.
+ex) transform matrix
+
+
+>> 예시
+uniform float fTime;
+uniform int iIndex;
+uniform vec4 vColorValue;
+uniform mat4 mvpMatrix;
+
+shader 상에 해당 uniform 에 값을 쓸 수는 없다.
+하지만 아래와 같이 초기값을 지정하는 것은 가능하다.
+
+uniform int answer = 42;
+*/
+
+#pragma endregion
+
+
+#pragma region UNIFORM 2) Arranging Your Uniforms
+
+/*
+* >> Opengl  에는 shader 의 값을 쓰는 많은 함수들이 있다
+이러한 함수들은, uniform 변수들을 'location' 을 통해 식별하고
+접근한다.
+
+아래와 같이 'layout qualifier' 라는 것을 이용하여
+uniform 마다 location 을 할당할 수 있다.
+
+layout (location = 17) uniform vec4 myUniform;
+
+만약 이와 같이 lcoation 을 별도로 할당하지 않으면
+opengl 이 대신 할당해준단.
+
+>> GLint glGetUniformLocation(GLuint program,
+                           const GLchar* name);
+ 해당 함수를 통해 uniform 의 location 을 얻을 수 있다.
+ex) GLint iLocation = glGetUniformLocation(myProgram, "vColorValue");
+
+만약 리턴값이 - 1 이라는 것은, 해당  uniform 이름 이 존재하지 않는다는 것이다.
+
+또한 중요한 것이 있다. 내가 location 을 명시해준다고 하더라도
+shader 중에 해당 uniform 을 사용하는 shader 가 단 하나라도 없다면
+마찬가지로 uniform 이름은 "사라진다"
+ */
+
+#pragma endregion
+
+
+#pragma region UNIFORM 3) Uniform 세팅하기
+
+/*
+* >> glUniform*() 함수를 통해 값을 세팅한다.
+ 
+ex 1) 
+
+layout (location = 0) uniform float fTime;
+layout (location = 1) uniform int iIndex;
+layout (location = 2) uniform vec4 vColorValue;
+layout (location = 3) uniform bool bSomeFlag;
+
+ex 1) 
+glUseProgram(myShader);
+glUniform1f(0, 45.2f);
+glUniform1i(1, 42);
+glUniform4f(2, 1.0f, 0.0f, 0.0f, 1.0f);
+glUniform1i(3, GL_FALSE);
+
+ex 2) 
+uniform vec4 vColor;
+
+ex 2)
+GLfloat vColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+glUniform4fv(iColorLocation, 1, vColor);
+
+ex 3) 
+
+uniform vec4 vColors[2];
+
+GLfloat vColors[4][2] = { { 1.0f, 1.0f, 1.0f, 1.0f } ,
+                          { 1.0f, 0.0f, 0.0f, 1.0f } };
+
+glUniform4fv(iColorLocation, 2, vColors);
+
+*/
+
+/*
+* >> glUniform*() 인자 분석하기
+
+count : '인자로 넘겨주는 pointer' 에 몇개의 matrix 가 존재하는가
+            즉, 여러개의 matrix 값도 넘겨줄 수 있다.
+
+GL_FALSE : transpose 여부
+- 만약 넘겨주는 matrix 가 이미 column major 이라면, GL_FALSE 를 넘겨주면 된다.
+  GL_TRUE 라고 하면, vertex shader 측으로 '복사' 하여 넘겨줄 때
+  전치 행렬 을 넘겨준다.
+
+  만약 계산한 matrx 가 row major 이라면 !
+
+  https://stackoverflow.com/questions/33862730/row-major-vs-column-major-confusion
+
+  row major, column major 에 대한 설명
+*/
+#pragma endregion
+
+
+#pragma region UNIFORM 4) Uniform Blocks
+
+/* >> 등장 배경
+- shader 에서 정말 많은 uniform 변수들이 필요하게 될 수도 있는데
+그것들을 일일히 glUniform 변수를 통해서 세팅하는 것은 매우 비효율적이다.
+일부 uniform 은 매 프레임 변경이 필요할지 몰라도
+일부는 맨 처음 한번만 초기화 하는 경우들도 있다.
+즉, uniform 들을 묶어서 한번에 세팅 혹은 관리하는 것이 효율적이다.
+이를 위해서 uniform block 이 나온 것이다.
+
+>> 동작 원리
+- 'uniform block' 은, uniform 들을 모아서, 특정 buffer object block 에
+저장하는 것이다.
+
+buffer object 는 지금까지 설명해온 개념 그대로다.
+
+전체 uniform group 을 buffer binding 을 변경함으로써
+한꺼번에 값을 세팅할 수도 있고
+혹은 buffer content 를 변경함으로써 , group of uniform 들을 변경할 수도 있다.
+
+다시 말해서, Uniform Buffer Object(UBO) 는
+큰 크기의 uniform data 를 shader 측에 넘길 때 사용하는 개념이다.
+*/
+
+/*
+* >> 예시
+uniform TransformBlock
+{
+    float scale;            // Global scale to apply to everything
+    vec3 translation;       // Translation in X, Y, and Z
+    float rotation[3];      // Rotation around X, Y, and Z axes
+    mat4 projection_matrix; // A generalized projection matrix to apply
+                            // after scale and rotate
+} transform;
+
+'TransformBlock' 이라는 uniform block 을 선언하고 있다.
+
+해당 uniform block 에 대응되는 buffer object 에 data 를 쓰고 싶다면
+UBO 의 각 멤버의 location 을 알아야 한다.
+
+ex)
+
+OpenGL Shading Language
+// Accessing the scale factor
+float scaled_value = transform.scale * original_value;
+
+// Applying the translation
+vec3 translated_position = position + transform.translation;
+*/
+
+/*
+* >> Uniform Block Object Data 가 생긴 모양 (Uniform Buffer Layout)
+
+1) Standard
+
+- redefined, standardized layout for uniform block 을 이용한다.
+
+- 그저 buffer 에 데이터 복사 (UBO 멤버들이 특정 순서로 배열되어 있다고 가정)
+
+- 편하지만, 비효율적일 수 있다. 멤버들 사이에 padding 이 존재할 수 있다.
+이로 인해 buffer 가 실제 필요한 크기보다 커질 수 있다.
+
+- 해당 방식이 보통 안전하다
+
+2) Custom
+
+- OpenGL 이 data 를 어디에 베치할지를 알아서 결정하게 하는 방식이다.
+이는 매우 효과적인 shader 를 짤 수 있으나, 다른 의미로
+application 이 각 데이터가 어디에 있는지를 알아야 한다는 의미이다.
+
+- 이 경우, UBO 안에 있는 data 들은 'shared layout' 에 정렬되어 있다.
+쉽게 말해 OpenGL 측에서 접근하느데에 있어 최적화된 방식으로
+데이터를 정렬시켜서 사용한다는 것이다.
+
+반대로 말하면 OpenGL 은 빠르고 효율적으로 데이터를 처리할지 몰라도
+application 이 할일은 더 많다는 것이다.
+
+
+*/
+#pragma endregion
